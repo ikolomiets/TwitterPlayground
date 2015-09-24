@@ -5,15 +5,13 @@ public class User {
     @JsonProperty("id")
     private long id;
 
-    @JsonProperty("id_str")
-    private String idStr;
-
     @JsonProperty("name")
     private String name;
 
     @JsonProperty("screen_name")
     private String screenName;
 
+    // The UTC datetime
     @JsonProperty("created_at")
     private String createdAt;
 
@@ -38,20 +36,22 @@ public class User {
     @JsonProperty("statuses_count")
     private int statusesCount;
 
+    @JsonProperty("default_profile_image")
+    private boolean defaultProfileImage;
+
+    @JsonProperty("profile_image_url_https")
+    private String profileImageUrlHttps;
+
     public long getId() {
         return id;
     }
 
+    public String getIdAsString() {
+        return Long.toUnsignedString(id);
+    }
+
     public void setId(long id) {
         this.id = id;
-    }
-
-    public String getIdStr() {
-        return idStr;
-    }
-
-    public void setIdStr(String idStr) {
-        this.idStr = idStr;
     }
 
     public String getName() {
@@ -137,8 +137,7 @@ public class User {
     @Override
     public String toString() {
         return "User{" +
-                "id=" + id +
-                ", idStr='" + idStr + '\'' +
+                "id=" + getIdAsString() +
                 ", name='" + name + '\'' +
                 ", screenName='" + screenName + '\'' +
                 ", createdAt='" + createdAt + '\'' +
@@ -149,6 +148,8 @@ public class User {
                 ", favouritesCount=" + favouritesCount +
                 ", verified=" + verified +
                 ", statusesCount=" + statusesCount +
+                ", defaultProfileImage=" + defaultProfileImage +
+                ", profileImageUrlHttps='" + profileImageUrlHttps + '\'' +
                 '}';
     }
 }

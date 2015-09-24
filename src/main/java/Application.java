@@ -1,15 +1,18 @@
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
-import org.springframework.security.oauth2.client.OAuth2RestTemplate;
 
 public class Application {
+
+    private static final Logger logger = LoggerFactory.getLogger(Application.class);
 
     public static void main(String[] args) {
         AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(AppConfig.class);
 
-        OAuth2RestTemplate restTemplate = ctx.getBean(OAuth2RestTemplate.class);
+        TwitterClient twitterClient = ctx.getBean(TwitterClient.class);
 
-        User user = restTemplate.getForObject("https://api.twitter.com/1.1/users/show.json?screen_name=ikolomiets", User.class);
-        System.out.println(user);
+        User user = twitterClient.showUserById(146882655);
+        logger.debug("Got {}", user);
     }
 
 }
