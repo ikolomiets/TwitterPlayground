@@ -22,6 +22,7 @@ public class TwitterClientTest {
         User user = twitterClient.showUserById(146882655);
         logger.debug("Got {}", user);
         Assert.assertNotNull(user);
+
         Assert.assertEquals("https://pbs.twimg.com/profile_images/507133713386598400/7m1JJ2h2_normal.jpeg", user.getProfileImageUrlHttps());
     }
 
