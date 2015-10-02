@@ -6,11 +6,13 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.env.Environment;
+import org.springframework.http.client.HttpComponentsAsyncClientHttpRequestFactory;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.security.oauth2.client.OAuth2RestTemplate;
 import org.springframework.security.oauth2.client.token.grant.client.ClientCredentialsResourceDetails;
+import org.springframework.web.client.AsyncRestTemplate;
 
 @Configuration
 @ComponentScan
@@ -41,6 +43,11 @@ public class AppConfig {
         }
 
         return restTemplate;
+    }
+
+    @Bean
+    public AsyncRestTemplate asyncRestTemplate(OAuth2RestTemplate restTemplate) {
+        return new AsyncRestTemplate(new HttpComponentsAsyncClientHttpRequestFactory(), restTemplate);
     }
 
 }
