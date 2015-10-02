@@ -134,6 +134,22 @@ public class User {
         this.statusesCount = statusesCount;
     }
 
+    public boolean isDefaultProfileImage() {
+        return defaultProfileImage;
+    }
+
+    public void setDefaultProfileImage(boolean defaultProfileImage) {
+        this.defaultProfileImage = defaultProfileImage;
+    }
+
+    public String getProfileImageUrlHttps() {
+        return profileImageUrlHttps;
+    }
+
+    public void setProfileImageUrlHttps(String profileImageUrlHttps) {
+        this.profileImageUrlHttps = profileImageUrlHttps;
+    }
+
     @Override
     public String toString() {
         return "User{" +
