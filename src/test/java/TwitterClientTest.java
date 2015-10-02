@@ -25,8 +25,4 @@ public class TwitterClientTest {
         Assert.assertEquals("VRSoloviev", user.getScreenName());
     }
 
-    @Test
-    public void testShowUserByIdAsync() throws Exception {
-        // todo
-    }
 }
