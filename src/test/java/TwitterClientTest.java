@@ -77,14 +77,19 @@ public class TwitterClientTest {
                 Assert.assertNotNull("next_cursor is not null", result.getBody().getNextCursor());
                 Assert.assertNotNull("previous_cursor is not null", result.getBody().getPreviousCursor());
 
-                complete.countDown();
+/*
+                if (result.getBody().getNextCursor() != null) {
+                    twitterClient.getFollowersByUserId(USER_ID, result.getBody().getNextCursor(), this);
+                }  else {
+                    complete.countDown();
+                }
+*/
             }
 
             public void onFailure(Throwable ex) {
                 logger.error("getFollowersByUserId failed", ex);
-                Assert.fail(ex.getMessage());
-
                 complete.countDown();
+                Assert.fail(ex.getMessage());
             }
         });
 

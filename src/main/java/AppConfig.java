@@ -15,7 +15,8 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.security.oauth2.client.OAuth2RestTemplate;
 import org.springframework.security.oauth2.client.token.grant.client.ClientCredentialsResourceDetails;
 import org.springframework.security.oauth2.common.OAuth2AccessToken;
-import org.springframework.web.client.AsyncRestTemplate;
+import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.web.client.*;
 
 import java.io.IOException;
 import java.net.URI;
@@ -24,6 +25,7 @@ import java.net.URI;
 @ComponentScan
 @PropertySource("classpath:twitter.properties")
 public class AppConfig {
+
 
     @Autowired
     private Environment env;
@@ -36,9 +38,13 @@ public class AppConfig {
         details.setClientSecret(env.getProperty("clientSecret"));
         details.setAccessTokenUri(env.getProperty("accessTokenUri"));
 
-        OAuth2RestTemplate restTemplate = new OAuth2RestTemplate(details);
+        OAuth2RestTemplate restTemplate = new OAuth2RestTemplate(details) {
+            @Override
+            protected <T> T doExecute(URI url, HttpMethod method, RequestCallback requestCallback, ResponseExtractor<T> responseExtractor) throws RestClientException {
+                return super.doExecute(url, method, requestCallback, new RateLimitHeadersResponseExtractor<>(responseExtractor));
+            }
+        };
         restTemplate.setRequestFactory(new HttpComponentsClientHttpRequestFactory());
-        restTemplate.getInterceptors().add(new RateLimitHeadersInterceptor());
 
         for (HttpMessageConverter<?> httpMessageConverter : restTemplate.getMessageConverters()) {
             if (httpMessageConverter instanceof MappingJackson2HttpMessageConverter) {
@@ -64,7 +70,13 @@ public class AppConfig {
                 return asyncRequest;
             }
         };
-        return new AsyncRestTemplate(asyncRequestFactory, oAuth2RestTemplate);
+
+        return new AsyncRestTemplate(asyncRequestFactory, oAuth2RestTemplate) {
+            @Override
+            protected <T> ListenableFuture<T> doExecute(URI url, HttpMethod method, AsyncRequestCallback requestCallback, ResponseExtractor<T> responseExtractor) throws RestClientException {
+                return super.doExecute(url, method, requestCallback, new RateLimitHeadersResponseExtractor<>(responseExtractor));
+            }
+        };
     }
 
 }
