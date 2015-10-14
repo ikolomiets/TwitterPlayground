@@ -54,4 +54,40 @@ public class TwitterClientTest {
         latch.await();
     }
 
+
+    @Test
+    public void testGetFollowersByUserId() throws Exception {
+        // todo
+    }
+
+    @Test
+    public void testGetFollowersByUserIdAsync() throws Exception {
+        final CountDownLatch complete = new CountDownLatch(1);
+
+        twitterClient.getFollowersByUserId(USER_ID, null, new ListenableFutureCallback<ResponseEntity<CursoredResult>>() {
+            public void onSuccess(ResponseEntity<CursoredResult> result) {
+                Assert.assertNotNull(result);
+                Assert.assertNotNull(result.getBody());
+
+                Assert.assertNotNull("ids is not null", result.getBody().getIds());
+                Assert.assertTrue("ids is not empty", !result.getBody().getIds().isEmpty());
+                Assert.assertEquals(5000, result.getBody().getIds().size());
+                logger.debug("ids={}", result.getBody().getIds());
+
+                Assert.assertNotNull("next_cursor is not null", result.getBody().getNextCursor());
+                Assert.assertNotNull("previous_cursor is not null", result.getBody().getPreviousCursor());
+
+                complete.countDown();
+            }
+
+            public void onFailure(Throwable ex) {
+                logger.error("getFollowersByUserId failed", ex);
+                Assert.fail(ex.getMessage());
+
+                complete.countDown();
+            }
+        });
+
+        complete.await();
+    }
 }
