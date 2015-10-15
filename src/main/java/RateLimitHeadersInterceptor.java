@@ -1,26 +1,25 @@
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpRequest;
+import org.springframework.http.client.ClientHttpRequestExecution;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
-import org.springframework.web.client.ResponseExtractor;
 
-import java.sql.Date;
+import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 
-public class RateLimitHeadersResponseExtractor<T> extends AbstractDelegatingResponseExtractor<T> {
+public class RateLimitHeadersInterceptor implements ClientHttpRequestInterceptor {
 
-    private static final Logger logger = LoggerFactory.getLogger(RateLimitHeadersResponseExtractor.class);
-
+    private static final Logger logger = LoggerFactory.getLogger(RateLimitHeadersInterceptor.class);
     private static final DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
 
-    public RateLimitHeadersResponseExtractor(ResponseExtractor<T> delegate) {
-        super(delegate);
-    }
+    public ClientHttpResponse intercept(HttpRequest request, byte[] body, ClientHttpRequestExecution execution) throws IOException {
+        ClientHttpResponse response = execution.execute(request, body);
 
-    @Override
-    protected void doExtractData(ClientHttpResponse response) {
         HttpHeaders headers = response.getHeaders();
         List<String> limit = headers.get("x-rate-limit-limit");
         List<String> remaining = headers.get("x-rate-limit-remaining");
@@ -28,6 +27,8 @@ public class RateLimitHeadersResponseExtractor<T> extends AbstractDelegatingResp
         if (limit != null && !limit.isEmpty() && remaining != null && !remaining.isEmpty() && reset != null && !reset.isEmpty()) {
             logger.debug("limit={}, remaining={}, reset={} ({})", limit.get(0), remaining.get(0), reset.get(0), DATE_FORMAT.format(new Date(Long.parseLong(reset.get(0)) * 1000)));
         }
+
+        return response;
     }
 
 }

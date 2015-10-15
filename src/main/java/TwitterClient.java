@@ -1,15 +1,8 @@
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.util.concurrent.ListenableFuture;
-import org.springframework.util.concurrent.ListenableFutureCallback;
-import org.springframework.web.client.AsyncRestTemplate;
 import org.springframework.web.client.RestTemplate;
+import rx.Observer;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicReference;
 
 @Component
 public class TwitterClient {
@@ -20,60 +13,31 @@ public class TwitterClient {
     @Autowired
     private RestTemplate restTemplate;
 
-    @Autowired
-    private AsyncRestTemplate asyncRestTemplate;
-
     public User showUserById(long id) {
         return restTemplate.getForObject(URL_SHOW_USER_BY_ID, User.class, Long.toUnsignedString(id));
     }
 
-    public void showUserByIdAsync(long id, ListenableFutureCallback<ResponseEntity<User>> callback) {
-        ListenableFuture<ResponseEntity<User>> userFuture = asyncRestTemplate.getForEntity(URL_SHOW_USER_BY_ID, User.class, Long.toUnsignedString(id));
-        userFuture.addCallback(callback);
+    public CursoredResult getFollowersByUserId(long userId, String cursor) {
+        return restTemplate.getForObject(URL_FOLLOWERS_BY_ID, CursoredResult.class, cursor == null ? "-1" : cursor, Long.toUnsignedString(userId));
     }
 
-    public void getFollowersByUserId(long userId, String cursor, ListenableFutureCallback<ResponseEntity<CursoredResult>> callback) {
-        ListenableFuture<ResponseEntity<CursoredResult>> future = asyncRestTemplate.getForEntity(URL_FOLLOWERS_BY_ID,
-                CursoredResult.class,
-                cursor == null ? "-1" : cursor,
-                Long.toUnsignedString(userId)
-        );
-        future.addCallback(callback);
-    }
-
-    public List<Long> getFollowersByUserId(final long userId) throws Exception {
-        final List<Long> followers = new ArrayList<Long>();
-
-        final CountDownLatch complete = new CountDownLatch(1);
-        final AtomicReference<Throwable> error = new AtomicReference<Throwable>();
-
-        getFollowersByUserId(userId, null, new ListenableFutureCallback<ResponseEntity<CursoredResult>>() {
-            public void onSuccess(ResponseEntity<CursoredResult> result) {
-                CursoredResult cursoredResult = result.getBody();
-
-                synchronized (followers) {
-                    followers.addAll(cursoredResult.getIds());
-                }
-
-                if (cursoredResult.getNextCursor() != null)
-                    getFollowersByUserId(userId, cursoredResult.getNextCursor(), this);
-                else
-                    complete.countDown();
+    public void getFollowersByUserId(long userId, Observer<Long> observer) {
+        String cursor = null;
+        do {
+            CursoredResult result;
+            try {
+                result = getFollowersByUserId(userId, cursor);
+            } catch (Throwable e) {
+                observer.onError(e);
+                return;
             }
+            for (Long id : result.getIds())
+                observer.onNext(id);
 
-            public void onFailure(Throwable ex) {
-                error.set(ex);
-                complete.countDown();
-            }
-        });
+            cursor = result.getNextCursor();
+        } while (cursor != null);
 
-        complete.await();
-
-        //noinspection ThrowableResultOfMethodCallIgnored
-        if (error.get() != null)
-            throw new Exception("Unable to get followers", error.get());
-
-        return followers;
+        observer.onCompleted();
     }
 
 }

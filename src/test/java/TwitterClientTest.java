@@ -4,12 +4,12 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
-import org.springframework.util.concurrent.ListenableFutureCallback;
+import rx.Observer;
 
-import java.util.concurrent.CountDownLatch;
+import java.util.ArrayList;
+import java.util.List;
 
 
 @RunWith(SpringJUnit4ClassRunner.class)
@@ -32,67 +32,28 @@ public class TwitterClientTest {
     }
 
     @Test
-    public void testShowUserByIdAsync() throws Exception {
-        final CountDownLatch latch = new CountDownLatch(1);
-
-        twitterClient.showUserByIdAsync(USER_ID, new ListenableFutureCallback<ResponseEntity<User>>() {
-            public void onSuccess(ResponseEntity<User> result) {
-                User user = result.getBody();
-                logger.debug("Got async {}", user);
-                Assert.assertNotNull(user);
-                Assert.assertEquals(USER_ID, user.getId());
-                latch.countDown();
-            }
-
-            public void onFailure(Throwable ex) {
-                logger.error("showUserByIdAsync failed", ex);
-                Assert.fail(ex.getMessage());
-                latch.countDown();
-            }
-        });
-
-        latch.await();
-    }
-
-
-    @Test
     public void testGetFollowersByUserId() throws Exception {
-        // todo
-    }
+        final List<Long> ids = new ArrayList<Long>();
 
-    @Test
-    public void testGetFollowersByUserIdAsync() throws Exception {
-        final CountDownLatch complete = new CountDownLatch(1);
+        twitterClient.getFollowersByUserId(USER_ID, new Observer<Long>() {
+            public void onCompleted() {
+                logger.debug("XXX onCompleted: got {} ids", ids.size());
 
-        twitterClient.getFollowersByUserId(USER_ID, null, new ListenableFutureCallback<ResponseEntity<CursoredResult>>() {
-            public void onSuccess(ResponseEntity<CursoredResult> result) {
-                Assert.assertNotNull(result);
-                Assert.assertNotNull(result.getBody());
-
-                Assert.assertNotNull("ids is not null", result.getBody().getIds());
-                Assert.assertTrue("ids is not empty", !result.getBody().getIds().isEmpty());
-                Assert.assertEquals(5000, result.getBody().getIds().size());
-                logger.debug("ids={}", result.getBody().getIds());
-
-                Assert.assertNotNull("next_cursor is not null", result.getBody().getNextCursor());
-                Assert.assertNotNull("previous_cursor is not null", result.getBody().getPreviousCursor());
-
-/*
-                if (result.getBody().getNextCursor() != null) {
-                    twitterClient.getFollowersByUserId(USER_ID, result.getBody().getNextCursor(), this);
-                }  else {
-                    complete.countDown();
-                }
-*/
             }
 
-            public void onFailure(Throwable ex) {
-                logger.error("getFollowersByUserId failed", ex);
-                complete.countDown();
-                Assert.fail(ex.getMessage());
+            public void onError(Throwable e) {
+                logger.error("XXX onError: got {} ids", ids.size(), e);
+                Assert.fail(e.getMessage());
+            }
+
+            public void onNext(Long id) {
+                if (ids.contains(id)) {
+                    Assert.fail("Duplicate id=" + id);
+                }
+                ids.add(id);
             }
         });
 
-        complete.await();
     }
+
 }
