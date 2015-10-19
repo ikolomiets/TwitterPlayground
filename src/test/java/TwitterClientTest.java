@@ -23,12 +23,33 @@ public class TwitterClientTest {
     @Autowired
     private TwitterClient twitterClient;
 
+    @Autowired
+    private RateLimitsScoreborad rateLimitsScoreborad;
+
     @Test
     public void testShowUserById() throws Exception {
         User user = twitterClient.showUserById(USER_ID);
         logger.debug("Got {}", user);
         Assert.assertNotNull(user);
         Assert.assertEquals(USER_ID, user.getId());
+    }
+
+    @Test
+    public void testUsersRateLimit() throws Exception {
+        User user = twitterClient.showUserById(USER_ID);
+        Assert.assertNotNull(user);
+
+        RateLimitInfo rateLimitInfo = rateLimitsScoreborad.getRateLimitInfo("users");
+        Assert.assertNotNull(rateLimitInfo);
+
+        User user1 = twitterClient.showUserById(USER_ID);
+        Assert.assertNotNull(user1);
+
+        RateLimitInfo rateLimitInfo1 = rateLimitsScoreborad.getRateLimitInfo("users");
+        Assert.assertNotNull(rateLimitInfo1);
+
+        Assert.assertNotSame(rateLimitInfo, rateLimitInfo1);
+        Assert.assertTrue("new remaining = old remaining - 1", rateLimitInfo.getRemaining() - rateLimitInfo1.getRemaining() == 1);
     }
 
     @Test

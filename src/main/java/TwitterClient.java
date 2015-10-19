@@ -1,5 +1,6 @@
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import rx.Observer;
 
@@ -13,8 +14,16 @@ public class TwitterClient {
     @Autowired
     private RestTemplate restTemplate;
 
-    public User showUserById(long id) {
-        return restTemplate.getForObject(URL_SHOW_USER_BY_ID, User.class, Long.toUnsignedString(id));
+    public User showUserById(long id) throws RateLimitException {
+        try {
+            return restTemplate.getForObject(URL_SHOW_USER_BY_ID, User.class, Long.toUnsignedString(id));
+        } catch (RestClientException e) {
+            if (e.getCause() instanceof RateLimitException) {
+                throw (RateLimitException) e.getCause();
+            } else {
+                throw e;
+            }
+        }
     }
 
     public CursoredResult getFollowersByUserId(long userId, String cursor) {

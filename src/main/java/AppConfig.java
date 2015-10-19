@@ -21,7 +21,12 @@ public class AppConfig {
     private Environment env;
 
     @Bean
-    public OAuth2RestTemplate restTemplate() {
+    public RateLimitsScoreborad rateLimitsScoreborad() {
+        return new RateLimitsScoreborad();
+    }
+
+    @Bean
+    public OAuth2RestTemplate restTemplate(RateLimitsScoreborad rateLimitsScoreborad) {
         ClientCredentialsResourceDetails details = new ClientCredentialsResourceDetails();
         details.setId("twitter-client");
         details.setClientId(env.getProperty("clientID"));
@@ -30,7 +35,7 @@ public class AppConfig {
 
         OAuth2RestTemplate restTemplate = new OAuth2RestTemplate(details);
         restTemplate.setRequestFactory(new HttpComponentsClientHttpRequestFactory());
-        restTemplate.getInterceptors().add(new RateLimitHeadersInterceptor());
+        restTemplate.getInterceptors().add(new RateLimitInterceptor(rateLimitsScoreborad));
 
         for (HttpMessageConverter<?> httpMessageConverter : restTemplate.getMessageConverters()) {
             if (httpMessageConverter instanceof MappingJackson2HttpMessageConverter) {

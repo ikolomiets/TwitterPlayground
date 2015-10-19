@@ -8,7 +8,7 @@ public class Application {
     private static final Logger logger = LoggerFactory.getLogger(Application.class);
     private static final ApplicationContext APPLICATION_CONTEXT = new AnnotationConfigApplicationContext(AppConfig.class);
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws RateLimitException {
         TwitterClient twitterClient = APPLICATION_CONTEXT.getBean(TwitterClient.class);
 
         User user = twitterClient.showUserById(146882655);
