@@ -1,29 +1,35 @@
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import rx.Observer;
+
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
 
 @Component
 public class TwitterClient {
 
+    private static final Logger logger = LoggerFactory.getLogger(TwitterClient.class);
+
     private static final String URL_SHOW_USER_BY_ID = "https://api.twitter.com/1.1/users/show.json?include_entities=false&user_id={user_id}";
     private static final String URL_FOLLOWERS_BY_ID = "https://api.twitter.com/1.1/followers/ids.json?cursor={cursor}&user_id={user_id}";
+
+    private final ScheduledExecutorService usersExecutor = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "users-executor"));
+    private final ScheduledExecutorService followersExecutor = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "followers-executor"));
 
     @Autowired
     private RestTemplate restTemplate;
 
-    public User showUserById(long id) throws RateLimitException {
-        try {
-            return restTemplate.getForObject(URL_SHOW_USER_BY_ID, User.class, Long.toUnsignedString(id));
-        } catch (RestClientException e) {
-            if (e.getCause() instanceof RateLimitException) {
-                throw (RateLimitException) e.getCause();
-            } else {
-                throw e;
-            }
-        }
+    public User showUserById(long id) {
+        return restTemplate.getForObject(URL_SHOW_USER_BY_ID, User.class, Long.toUnsignedString(id));
+    }
+
+    public void showUserById(long id, Observer<User> observer) {
+        AsyncRestClientTask<User> userAsyncRestClientTask = () -> showUserById(id);
+        userAsyncRestClientTask.submitWith(usersExecutor, observer);
     }
 
     public CursoredResult getFollowersByUserId(long userId, String cursor) {
@@ -31,22 +37,29 @@ public class TwitterClient {
     }
 
     public void getFollowersByUserId(long userId, Observer<Long> observer) {
-        String cursor = null;
-        do {
-            CursoredResult result;
-            try {
-                result = getFollowersByUserId(userId, cursor);
-            } catch (Throwable e) {
-                observer.onError(e);
-                return;
+        AsyncRestClientTask<CursoredResult> cursoredResultAsyncRestClientTask = () -> getFollowersByUserId(userId, (String) null);
+        cursoredResultAsyncRestClientTask.submitWith(followersExecutor, new Observer<CursoredResult>() {
+            @Override
+            public void onCompleted() {
+                // do nothing
             }
-            for (Long id : result.getIds())
-                observer.onNext(id);
 
-            cursor = result.getNextCursor();
-        } while (cursor != null);
+            @Override
+            public void onError(Throwable e) {
+                observer.onError(e);
+            }
 
-        observer.onCompleted();
+            @Override
+            public void onNext(CursoredResult cursoredResult) {
+                cursoredResult.getIds().forEach(observer::onNext);
+                if (!cursoredResult.isLast()) {
+                    AsyncRestClientTask<CursoredResult> nextCursoredResultAsyncRestClientTask = () -> getFollowersByUserId(userId, cursoredResult.getNextCursorStr());
+                    nextCursoredResultAsyncRestClientTask.submitWith(followersExecutor, this);
+                } else {
+                    observer.onCompleted();
+                }
+            }
+        });
     }
 
 }
