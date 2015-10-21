@@ -54,12 +54,14 @@ public class TwitterClient {
 
             @Override
             public void onNext(CursoredResult cursoredResult) {
-                cursoredResult.getIds().forEach(observer::onNext);
-                if (!cursoredResult.isLast()) {
+                if (cursoredResult.getIds() != null)
+                    cursoredResult.getIds().forEach(observer::onNext);
+
+                if (cursoredResult.isLast()) {
+                    observer.onCompleted();
+                } else {
                     AsyncRestClientTask<CursoredResult> nextCursoredResultAsyncRestClientTask = () -> getFollowersByUserId(userId, cursoredResult.getNextCursorStr());
                     nextCursoredResultAsyncRestClientTask.submitWith(followersExecutor, this);
-                } else {
-                    observer.onCompleted();
                 }
             }
         });
