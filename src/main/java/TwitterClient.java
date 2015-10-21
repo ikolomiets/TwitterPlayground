@@ -5,8 +5,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import rx.Observer;
 
+import javax.annotation.PreDestroy;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 
 @Component
@@ -60,6 +63,22 @@ public class TwitterClient {
                 }
             }
         });
+    }
+
+    @PreDestroy
+    public void shutdown() throws InterruptedException {
+        logger.debug("Shutting down TwitterClient");
+
+        boolean usersExecutorTerminated = shutdownExecutorService(usersExecutor);
+        logger.debug("usersExecutor terminated? {}", usersExecutorTerminated);
+
+        boolean followersExecutorTerminated = shutdownExecutorService(followersExecutor);
+        logger.debug("followersExecutor terminated? {}", followersExecutorTerminated);
+    }
+
+    private boolean shutdownExecutorService(ExecutorService executorService) throws InterruptedException {
+        executorService.shutdown();
+        return executorService.awaitTermination(1, TimeUnit.MINUTES);
     }
 
 }
