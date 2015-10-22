@@ -6,7 +6,6 @@ import org.springframework.web.client.RestTemplate;
 import rx.Observer;
 
 import javax.annotation.PreDestroy;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -20,8 +19,7 @@ public class TwitterClient {
     private static final String URL_SHOW_USER_BY_ID = "https://api.twitter.com/1.1/users/show.json?include_entities=false&user_id={user_id}";
     private static final String URL_FOLLOWERS_BY_ID = "https://api.twitter.com/1.1/followers/ids.json?cursor={cursor}&user_id={user_id}";
 
-    private final ScheduledExecutorService usersExecutor = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "users-executor"));
-    private final ScheduledExecutorService followersExecutor = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "followers-executor"));
+    private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "executor-service"));
 
     @Autowired
     private RestTemplate restTemplate;
@@ -31,8 +29,8 @@ public class TwitterClient {
     }
 
     public void showUserById(long id, Observer<User> observer) {
-        AsyncRestClientTask<User> userAsyncRestClientTask = () -> showUserById(id);
-        userAsyncRestClientTask.submitWith(usersExecutor, observer);
+        RestClientTask<User> showUserTask = () -> showUserById(id);
+        showUserTask.submitWith(executorService, observer);
     }
 
     public CursoredResult getFollowersByUserId(long userId, String cursor) {
@@ -40,8 +38,8 @@ public class TwitterClient {
     }
 
     public void getFollowersByUserId(long userId, Observer<Long> observer) {
-        AsyncRestClientTask<CursoredResult> cursoredResultAsyncRestClientTask = () -> getFollowersByUserId(userId, (String) null);
-        cursoredResultAsyncRestClientTask.submitWith(followersExecutor, new Observer<CursoredResult>() {
+        RestClientTask<CursoredResult> getFollowersTask = () -> getFollowersByUserId(userId, (String) null);
+        getFollowersTask.submitWith(executorService, new Observer<CursoredResult>() {
             @Override
             public void onCompleted() {
                 // do nothing
@@ -60,8 +58,8 @@ public class TwitterClient {
                 if (cursoredResult.isLast()) {
                     observer.onCompleted();
                 } else {
-                    AsyncRestClientTask<CursoredResult> nextCursoredResultAsyncRestClientTask = () -> getFollowersByUserId(userId, cursoredResult.getNextCursorStr());
-                    nextCursoredResultAsyncRestClientTask.submitWith(followersExecutor, this);
+                    RestClientTask<CursoredResult> getNextFollowersTask = () -> getFollowersByUserId(userId, cursoredResult.getNextCursorStr());
+                    getNextFollowersTask.submitWith(executorService, this);
                 }
             }
         });
@@ -71,16 +69,9 @@ public class TwitterClient {
     public void shutdown() throws InterruptedException {
         logger.debug("Shutting down TwitterClient");
 
-        boolean usersExecutorTerminated = shutdownExecutorService(usersExecutor);
-        logger.debug("usersExecutor terminated? {}", usersExecutorTerminated);
-
-        boolean followersExecutorTerminated = shutdownExecutorService(followersExecutor);
-        logger.debug("followersExecutor terminated? {}", followersExecutorTerminated);
-    }
-
-    private boolean shutdownExecutorService(ExecutorService executorService) throws InterruptedException {
         executorService.shutdown();
-        return executorService.awaitTermination(1, TimeUnit.MINUTES);
+        boolean terminated = executorService.awaitTermination(1, TimeUnit.MINUTES);
+        logger.debug("executorService terminated? {}", terminated);
     }
 
 }

@@ -82,9 +82,30 @@ public class TwitterClientTest {
                 if (ids.size() % 1000 == 0) {
                     logger.debug("XXX Got {} ids so far...", ids.size());
                 }
+
+                if (ids.size() % 500 == 0) {
+                    twitterClient.showUserById(id, new Observer<User>() {
+                        @Override
+                        public void onCompleted() {
+                            // do nothing
+                        }
+
+                        @Override
+                        public void onError(Throwable e) {
+                            logger.error("showUserById failed for id={}", id, e);
+                        }
+
+                        @Override
+                        public void onNext(User user) {
+                            Assert.assertEquals((long) id, user.getId());
+                            logger.debug("Got User id={}, screenName={}", user.getId(), user.getScreenName());
+                        }
+                    });
+                }
             }
         };
 
+        // twitterClient.getFollowersByUserId(2255290202L, observer);
         twitterClient.getFollowersByUserId(USER_ID, observer);
 
         logger.debug("XXX Awaiting result...");

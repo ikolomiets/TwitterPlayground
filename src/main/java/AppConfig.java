@@ -11,6 +11,7 @@ import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.security.oauth2.client.OAuth2RestTemplate;
 import org.springframework.security.oauth2.client.token.grant.client.ClientCredentialsResourceDetails;
+import org.springframework.web.client.RestTemplate;
 
 @Configuration
 @ComponentScan
@@ -26,7 +27,7 @@ public class AppConfig {
     }
 
     @Bean
-    public OAuth2RestTemplate restTemplate(RateLimitsScoreborad rateLimitsScoreborad) {
+    public RestTemplate restTemplate(RateLimitsScoreborad rateLimitsScoreborad) {
         ClientCredentialsResourceDetails details = new ClientCredentialsResourceDetails();
         details.setId("twitter-client");
         details.setClientId(env.getProperty("clientID"));
@@ -35,6 +36,10 @@ public class AppConfig {
 
         OAuth2RestTemplate restTemplate = new OAuth2RestTemplate(details);
         restTemplate.setRequestFactory(new HttpComponentsClientHttpRequestFactory());
+
+        // Order of interceptors matters: add RateLimitInterceptor last,so
+        // it will be called *before* ProtectedUserAccountInterceptor to update RateLimitsScoreborad
+        restTemplate.getInterceptors().add(new ProtectedUserAccountInterceptor());
         restTemplate.getInterceptors().add(new RateLimitInterceptor(rateLimitsScoreborad));
 
         for (HttpMessageConverter<?> httpMessageConverter : restTemplate.getMessageConverters()) {
