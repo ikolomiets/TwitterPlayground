@@ -1,7 +1,7 @@
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.client.RestClientException;
-import rx.Observer;
+import rx.Subscriber;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
@@ -16,10 +16,13 @@ public interface RestClientTask<T> {
 
     T getSubject();
 
-    default void submitWith(ScheduledExecutorService executorService, Observer<T> observer) {
+    default void submitWith(ScheduledExecutorService executorService, Subscriber<? super T> subscriber) {
         StackTraceElement[] localSideStackTrace = Thread.currentThread().getStackTrace();
         executorService.submit(new Runnable() {
             public void run() {
+                if (subscriber.isUnsubscribed())
+                    return;
+
                 T subject;
                 try {
                     subject = getSubject();
@@ -39,19 +42,20 @@ public interface RestClientTask<T> {
                             executorService.schedule(this, delay, TimeUnit.MILLISECONDS);
                         } else if (cause instanceof ProtectedUserAccountException) {
                             logger.warn("Protected user account: {}", cause.getMessage());
-                            observer.onError(cause);
+                            subscriber.onError(cause);
                         } else {
-                            observer.onError(e);
+                            subscriber.onError(e);
                         }
                     } else {
-                        observer.onError(e);
+                        subscriber.onError(e);
                     }
                     return;
                 }
 
                 try {
-                    observer.onNext(subject);
-                    observer.onCompleted();
+                    subscriber.onNext(subject);
+                    if (!subscriber.isUnsubscribed())
+                        subscriber.onCompleted();
                 } catch (Throwable e) {
                     fixRemoteStackTrace(e, localSideStackTrace);
                     logger.error("Task failed", e);
@@ -62,7 +66,7 @@ public interface RestClientTask<T> {
 
     /**
      * This method changes the given remote cause, and it adds the also given local stacktrace.<br/>
-     * If the remoteCause is an {@link java.util.concurrent.ExecutionException} and it has a non-null inner
+     * If the remoteCause is an {@link ExecutionException} and it has a non-null inner
      * cause, this inner cause is unwrapped and the local stacktrace and exception message are added to the
      * that instead of the given remoteCause itself.
      *
