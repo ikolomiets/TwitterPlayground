@@ -126,7 +126,7 @@ public class TwitterClientTest {
 
             @Override
             public void onError(Throwable e) {
-                logger.error("XXX onError: {}", e.getMessage());
+                logger.error("XXX onError", e);
                 latch.countDown();
             }
 
