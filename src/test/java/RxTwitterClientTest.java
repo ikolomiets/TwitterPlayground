@@ -82,4 +82,41 @@ public class RxTwitterClientTest {
         latch.await();
         logger.debug("Done!");
     }
+
+    @Test
+    public void testGetFriendsByUserId() throws Exception {
+        CountDownLatch latch = new CountDownLatch(1);
+        rxTwitterClient.getFriendsByUserId(1292574098).subscribe(new Observer<Long>() {
+            final List<Long> ids = new ArrayList<>();
+
+            public void onCompleted() {
+                logger.debug("XXX onCompleted: got {} ids", ids.size());
+                logger.debug("XXX onCompleted: ids={}", ids);
+                latch.countDown();
+            }
+
+            public void onError(Throwable e) {
+                logger.error("XXX onError: got {} ids", ids.size(), e);
+                latch.countDown();
+            }
+
+            public void onNext(Long id) {
+                if (ids.contains(id)) {
+                    logger.warn("XXX Got duplicate: {}", id);
+                    return;
+                }
+
+                ids.add(id);
+
+                if (ids.size() % 1000 == 0) {
+                    logger.debug("XXX Got {} ids so far...", ids.size());
+                }
+            }
+        });
+
+        logger.debug("XXX Awaiting result...");
+        latch.await();
+        logger.debug("Done!");
+    }
+
 }
