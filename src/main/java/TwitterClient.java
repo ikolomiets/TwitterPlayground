@@ -9,7 +9,7 @@ import java.util.stream.Collectors;
 @Component
 public class TwitterClient {
 
-    private static final String URL_LOOKUP_USERS_BY_ID = "https://api.twitter.com/1.1/users/lookup.json?include_entities=false&user_id={user_id}";
+    private static final String URL_LOOKUP_USERS = "https://api.twitter.com/1.1/users/lookup.json?include_entities=false&user_id={user_id}&screen_name={screen_name}";
     private static final String URL_SHOW_USER_BY_ID = "https://api.twitter.com/1.1/users/show.json?include_entities=false&user_id={user_id}";
     private static final String URL_FOLLOWERS_BY_ID = "https://api.twitter.com/1.1/followers/ids.json?cursor={cursor}&user_id={user_id}";
     private static final String URL_FRIENDS_BY_ID = "https://api.twitter.com/1.1/friends/ids.json?cursor={cursor}&user_id={user_id}";
@@ -21,14 +21,22 @@ public class TwitterClient {
         this.restTemplate = restTemplate;
     }
 
+    public List<User> lookupUsersByName(List<String> names) {
+        if (names.size() > 100)
+            throw new IllegalArgumentException("Maximum is 100 names");
+
+        User[] users = restTemplate.postForObject(URL_LOOKUP_USERS, null, User[].class, null, String.join(",", names));
+        return Arrays.asList(users);
+    }
+
     public List<User> lookupUsersById(List<Long> ids) {
         if (ids.size() > 100)
-            throw new IllegalArgumentException("Maximum is 100 users");
+            throw new IllegalArgumentException("Maximum is 100 ids");
 
         List<String> idsAsStrings = ids.stream().map(Long::toUnsignedString).collect(Collectors.toList());
         String listOfIds =  String.join(",", idsAsStrings);
 
-        User[] users = restTemplate.postForObject(URL_LOOKUP_USERS_BY_ID, null, User[].class, listOfIds);
+        User[] users = restTemplate.postForObject(URL_LOOKUP_USERS, null, User[].class, listOfIds, null);
         return Arrays.asList(users);
     }
 
