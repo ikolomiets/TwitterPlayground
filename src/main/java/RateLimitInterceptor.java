@@ -60,7 +60,7 @@ public class RateLimitInterceptor implements ClientHttpRequestInterceptor {
                     throw new RateLimitException(newRateLimitInfo);
                 }
             } else {
-                logger.warn("Bad rate-limit headers in response: {} - {}, limit={}, remaining={}, reset={}",
+                logger.warn("Bad or missing rate-limit headers in response: {} - {}, limit={}, remaining={}, reset={}",
                         response.getStatusCode(), response.getStatusText(), limitValues, remainingValues, resetValues);
             }
         }

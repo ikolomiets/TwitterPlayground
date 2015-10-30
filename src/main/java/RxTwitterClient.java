@@ -41,6 +41,33 @@ public class RxTwitterClient {
         });
     }
 
+    public Observable<User> lookupUsersById(List<Long> ids) {
+        return Observable.create(subscriber -> submitUsersTask(subscriber, () -> twitterClient.lookupUsersById(ids)));
+    }
+
+    public Observable<User> lookupUsersByName(List<String> names) {
+        return Observable.create(subscriber -> submitUsersTask(subscriber, () -> twitterClient.lookupUsersByName(names)));
+    }
+
+    private void submitUsersTask(Subscriber<? super User> subscriber, Callable<List<User>> usersTask) {
+        submitRestClientTask(usersTask, new Subscriber<List<User>>() {
+            @Override
+            public void onCompleted() {
+                subscriber.onCompleted();
+            }
+
+            @Override
+            public void onError(Throwable e) {
+                subscriber.onError(e);
+            }
+
+            @Override
+            public void onNext(List<User> users) {
+                users.forEach(subscriber::onNext);
+            }
+        });
+    }
+
     public Observable<Long> getFollowersByUserId(long userId) {
         CursoredResultTaskFactory getFollowersTaskFactory = (cursor) -> () -> twitterClient.getFollowersByUserId(userId, cursor);
         return createObservableForCursoredResult(getFollowersTaskFactory);
@@ -62,23 +89,14 @@ public class RxTwitterClient {
 
                 @Override
                 public void onError(Throwable e) {
-                    if (!subscriber.isUnsubscribed())
-                        subscriber.onError(e);
+                    subscriber.onError(e);
                 }
 
                 @Override
                 public void onNext(CursoredResult cursoredResult) {
                     if (cursoredResult.getIds() != null) {
-                        for (Long id : cursoredResult.getIds()) {
-                            if (subscriber.isUnsubscribed()) {
-                                return;
-                            }
-                            subscriber.onNext(id);
-                        }
+                        cursoredResult.getIds().forEach(subscriber::onNext);
                     }
-
-                    if (subscriber.isUnsubscribed())
-                        return;
 
                     if (cursoredResult.isLast()) {
                         subscriber.onCompleted();
@@ -95,16 +113,12 @@ public class RxTwitterClient {
     private interface CursoredResultTaskFactory {
 
         Callable<CursoredResult> createRestClientTask(String cursor);
-
     }
 
     private <T> void submitRestClientTask(Callable<T> restClientTask, Subscriber<? super T> subscriber) {
         StackTraceElement[] localSideStackTrace = Thread.currentThread().getStackTrace();
         executorService.submit(new Runnable() {
             public void run() {
-                if (subscriber.isUnsubscribed())
-                    return;
-
                 T result;
                 try {
                     result = restClientTask.call();
@@ -136,8 +150,7 @@ public class RxTwitterClient {
 
                 try {
                     subscriber.onNext(result);
-                    if (!subscriber.isUnsubscribed())
-                        subscriber.onCompleted();
+                    subscriber.onCompleted();
                 } catch (Throwable e) {
                     fixRemoteStackTrace(e, localSideStackTrace);
                     logger.error("Task failed", e);
