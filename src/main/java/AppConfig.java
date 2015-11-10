@@ -30,9 +30,9 @@ public class AppConfig {
     public RestTemplate restTemplate(RateLimitsScoreborad rateLimitsScoreborad) {
         ClientCredentialsResourceDetails details = new ClientCredentialsResourceDetails();
         details.setId("twitter-client");
-        details.setClientId(env.getProperty("clientID"));
-        details.setClientSecret(env.getProperty("clientSecret"));
-        details.setAccessTokenUri(env.getProperty("accessTokenUri"));
+        details.setClientId(env.getProperty("twitter.clientID"));
+        details.setClientSecret(env.getProperty("twitter.clientSecret"));
+        details.setAccessTokenUri(env.getProperty("twitter.accessTokenUri"));
 
         OAuth2RestTemplate restTemplate = new OAuth2RestTemplate(details);
         restTemplate.setRequestFactory(new HttpComponentsClientHttpRequestFactory());

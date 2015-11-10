@@ -1,0 +1,4 @@
+neo4j.driverUrl=jdbc:neo4j://localhost:7474
+neo4j.username=<username>
+neo4j.password=<password>
+

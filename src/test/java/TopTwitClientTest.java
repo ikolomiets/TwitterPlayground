@@ -44,6 +44,10 @@ public class TopTwitClientTest {
         Assert.assertEquals(100, topUsers.size());
         Assert.assertEquals(100, new HashSet<>(topUsers).size());
 
+        for (String topUser : topUsers) {
+            logger.debug("Twitter URL: https://twitter.com/{}", topUser);
+        }
+
         logger.debug("top users: {}", topUsers);
     }
 }

@@ -3,7 +3,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class RateLimitsScoreborad {
 
-    private Map<String, RateLimitInfo> rateLimits = new ConcurrentHashMap<String, RateLimitInfo>();
+    private Map<String, RateLimitInfo> rateLimits = new ConcurrentHashMap<>();
 
     public RateLimitInfo getRateLimitInfo(String resourceFamily) {
         return rateLimits.get(resourceFamily);
