@@ -6,45 +6,41 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.env.Environment;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.client.AsyncClientHttpRequest;
-import org.springframework.http.client.HttpComponentsAsyncClientHttpRequestFactory;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.security.oauth2.client.OAuth2RestTemplate;
 import org.springframework.security.oauth2.client.token.grant.client.ClientCredentialsResourceDetails;
-import org.springframework.security.oauth2.common.OAuth2AccessToken;
-import org.springframework.util.concurrent.ListenableFuture;
-import org.springframework.web.client.*;
-
-import java.io.IOException;
-import java.net.URI;
+import org.springframework.web.client.RestTemplate;
 
 @Configuration
 @ComponentScan
 @PropertySource("classpath:twitter.properties")
 public class AppConfig {
 
-
     @Autowired
     private Environment env;
 
     @Bean
-    public OAuth2RestTemplate restTemplate() {
+    public RateLimitsScoreborad rateLimitsScoreborad() {
+        return new RateLimitsScoreborad();
+    }
+
+    @Bean
+    public RestTemplate restTemplate(RateLimitsScoreborad rateLimitsScoreborad) {
         ClientCredentialsResourceDetails details = new ClientCredentialsResourceDetails();
         details.setId("twitter-client");
-        details.setClientId(env.getProperty("clientID"));
-        details.setClientSecret(env.getProperty("clientSecret"));
-        details.setAccessTokenUri(env.getProperty("accessTokenUri"));
+        details.setClientId(env.getProperty("twitter.clientID"));
+        details.setClientSecret(env.getProperty("twitter.clientSecret"));
+        details.setAccessTokenUri(env.getProperty("twitter.accessTokenUri"));
 
-        OAuth2RestTemplate restTemplate = new OAuth2RestTemplate(details) {
-            @Override
-            protected <T> T doExecute(URI url, HttpMethod method, RequestCallback requestCallback, ResponseExtractor<T> responseExtractor) throws RestClientException {
-                return super.doExecute(url, method, requestCallback, new RateLimitHeadersResponseExtractor<>(responseExtractor));
-            }
-        };
+        OAuth2RestTemplate restTemplate = new OAuth2RestTemplate(details);
         restTemplate.setRequestFactory(new HttpComponentsClientHttpRequestFactory());
+
+        // Order of interceptors matters: add RateLimitInterceptor last,so
+        // it will be called *before* ProtectedUserAccountInterceptor to update RateLimitsScoreborad
+        restTemplate.getInterceptors().add(new ProtectedUserAccountInterceptor());
+        restTemplate.getInterceptors().add(new RateLimitInterceptor(rateLimitsScoreborad));
 
         for (HttpMessageConverter<?> httpMessageConverter : restTemplate.getMessageConverters()) {
             if (httpMessageConverter instanceof MappingJackson2HttpMessageConverter) {
@@ -55,28 +51,6 @@ public class AppConfig {
         }
 
         return restTemplate;
-    }
-
-    @Bean
-    public AsyncRestTemplate asyncRestTemplate(final OAuth2RestTemplate oAuth2RestTemplate) {
-        HttpComponentsAsyncClientHttpRequestFactory asyncRequestFactory = new HttpComponentsAsyncClientHttpRequestFactory() {
-            @Override
-            public AsyncClientHttpRequest createAsyncRequest(URI uri, HttpMethod httpMethod) throws IOException {
-                AsyncClientHttpRequest asyncRequest = super.createAsyncRequest(uri, httpMethod);
-
-                OAuth2AccessToken accessToken = oAuth2RestTemplate.getAccessToken();
-                asyncRequest.getHeaders().set("Authorization", String.format("%s %s", accessToken.getTokenType(), accessToken.getValue()));
-
-                return asyncRequest;
-            }
-        };
-
-        return new AsyncRestTemplate(asyncRequestFactory, oAuth2RestTemplate) {
-            @Override
-            protected <T> ListenableFuture<T> doExecute(URI url, HttpMethod method, AsyncRequestCallback requestCallback, ResponseExtractor<T> responseExtractor) throws RestClientException {
-                return super.doExecute(url, method, requestCallback, new RateLimitHeadersResponseExtractor<>(responseExtractor));
-            }
-        };
     }
 
 }

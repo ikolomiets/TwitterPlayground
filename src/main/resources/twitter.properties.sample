@@ -1,0 +1,3 @@
+twitter.clientID=<Consumer Key (API Key)>
+twitter.clientSecret=<Consumer Secret (API Secret)>
+twitter.accessTokenUri=https://api.twitter.com/oauth2/token
