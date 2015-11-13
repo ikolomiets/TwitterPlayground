@@ -7,8 +7,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
+import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(classes = {AppConfig.class, TwitterClient.class})
@@ -27,18 +28,32 @@ public class TopTwitClientInActionTest {
 
     @Test
     public void testAction() throws Exception {
-        for (int page = 1; page < 200; page++) {
+        List<String> allTopUsers = new ArrayList<>();
+        for (int page = 1; page <= 500; page++) {
             List<String> names = topTwitClient.getUsersOnPage(page);
             Assert.assertNotNull(names);
-            Assert.assertTrue(names.size() > 0);
+            Assert.assertEquals(10, names.size());
+            allTopUsers.addAll(names);
+        }
 
-            List<User> users = twitterClient.lookupUsersByName(names);
-            Assert.assertNotNull(users);
-            Assert.assertTrue(users.size() > 0);
+        for (int page = 0; page < 50; page++) {
+            List<String> pageUsers = new LinkedList<>(allTopUsers.subList(page * 100, (page + 1) * 100));
+            Assert.assertEquals(100, pageUsers.size());
+            List<User> users = twitterClient.lookupUsersByName(pageUsers);
+            for (User user : users) {
+                pageUsers.remove(user.getScreenName());
 
-            List<Long> ids = users.stream().map(User::getId).collect(Collectors.toList());
+                if (user.getFriendsCount() > 1000) {
+                    logger.warn("Ignore overfriendly {},{},{},{},{}", user.getId(), user.getScreenName(), user.getFollowersCount(), user.getFriendsCount(), user.isProtectedAccount());
+                    continue;
+                }
 
-            logger.debug("XXX page={}, names={}, ids={}", page, names, ids);
+                logger.info("{},{},{},{},{}", user.getId(), user.getScreenName(), user.getFollowersCount(), user.getFriendsCount(), user.isProtectedAccount());
+            }
+
+            for (String pageUser : pageUsers) {
+                logger.warn("User ranked {} is not found: {}", (page * 100 + pageUsers.indexOf(pageUser)), pageUser);
+            }
         }
     }
 }
