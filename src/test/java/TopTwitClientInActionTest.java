@@ -44,7 +44,12 @@ public class TopTwitClientInActionTest {
                 pageUsers.remove(user.getScreenName());
 
                 if (user.getFriendsCount() > 1000) {
-                    logger.warn("Ignore overfriendly {},{},{},{},{}", user.getId(), user.getScreenName(), user.getFollowersCount(), user.getFriendsCount(), user.isProtectedAccount());
+                    logger.warn("Ignore overfriendly user {},{},{},{},{}", user.getId(), user.getScreenName(), user.getFollowersCount(), user.getFriendsCount(), user.isProtectedAccount());
+                    continue;
+                }
+
+                if (user.isProtectedAccount()) {
+                    logger.warn("Ignore protected user {},{},{},{},{}", user.getId(), user.getScreenName(), user.getFollowersCount(), user.getFriendsCount(), user.isProtectedAccount());
                     continue;
                 }
 
