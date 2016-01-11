@@ -56,7 +56,7 @@
         </encoder>
     </appender>
 
-    <logger name="TopTwitClientInActionTest" level="debug" additivity="true">
+    <logger name="electrit.TopTwitClientInActionTest" level="debug" additivity="true">
         <appender-ref ref="TOPTWIT_DATA_FILE"/>
         <appender-ref ref="TOPTWIT_ERROR_FILE"/>
     </logger>

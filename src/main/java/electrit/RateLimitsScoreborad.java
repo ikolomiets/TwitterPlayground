@@ -1,3 +1,5 @@
+package electrit;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 

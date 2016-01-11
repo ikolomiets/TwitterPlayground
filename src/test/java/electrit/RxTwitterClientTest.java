@@ -1,4 +1,5 @@
-import org.junit.Assert;
+package electrit;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
@@ -6,49 +7,118 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import rx.Observer;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
+import java.util.concurrent.CountDownLatch;
 
 @RunWith(SpringJUnit4ClassRunner.class)
-@ContextConfiguration(classes = {AppConfig.class, TwitterClient.class})
-public class TwitterClientTest {
+@ContextConfiguration(classes = {AppConfig.class, RxTwitterClient.class, TwitterClient.class})
+public class RxTwitterClientTest {
 
     private static final Logger logger = LoggerFactory.getLogger(TwitterClientTest.class);
 
     private static final long USER_ID = 146882655L;
 
     @Autowired
-    private TwitterClient twitterClient;
-
-    @Autowired
-    private RateLimitsScoreborad rateLimitsScoreborad;
+    private RxTwitterClient rxTwitterClient;
 
     @Test
     public void testShowUserById() throws Exception {
-        User user = twitterClient.showUserById(USER_ID);
-        logger.debug("Got {}", user);
-        Assert.assertNotNull(user);
-        Assert.assertEquals(USER_ID, user.getId());
+        CountDownLatch latch = new CountDownLatch(1);
+        rxTwitterClient.showUserById(USER_ID).subscribe(new Observer<User>() {
+            @Override
+            public void onCompleted() {
+                logger.debug("onCompleted");
+                latch.countDown();
+            }
+
+            @Override
+            public void onError(Throwable e) {
+                logger.error("onError", e);
+                latch.countDown();
+            }
+
+            @Override
+            public void onNext(User user) {
+                logger.debug("onNext: {}", user.toString());
+            }
+        });
+
+        latch.await();
     }
 
     @Test
-    public void testUsersRateLimit() throws Exception {
-        User user = twitterClient.showUserById(USER_ID);
-        Assert.assertNotNull(user);
+    public void testGetFollowersByUserId() throws Exception {
+        CountDownLatch latch = new CountDownLatch(1);
+        rxTwitterClient.getFollowersByUserId(USER_ID).subscribe(new Observer<Long>() {
+            final List<Long> ids = new ArrayList<>();
 
-        RateLimitInfo rateLimitInfo = rateLimitsScoreborad.getRateLimitInfo("users");
-        Assert.assertNotNull(rateLimitInfo);
+            public void onCompleted() {
+                logger.debug("XXX onCompleted: got {} ids", ids.size());
+                latch.countDown();
+            }
 
-        User user1 = twitterClient.showUserById(USER_ID);
-        Assert.assertNotNull(user1);
+            public void onError(Throwable e) {
+                logger.error("XXX onError: got {} ids", ids.size(), e);
+                latch.countDown();
+            }
 
-        RateLimitInfo rateLimitInfo1 = rateLimitsScoreborad.getRateLimitInfo("users");
-        Assert.assertNotNull(rateLimitInfo1);
+            public void onNext(Long id) {
+                if (ids.contains(id)) {
+                    logger.warn("XXX Got duplicate: {}", id);
+                    return;
+                }
 
-        Assert.assertNotSame(rateLimitInfo, rateLimitInfo1);
-        Assert.assertTrue("new remaining = old remaining - 1", rateLimitInfo.getRemaining() - rateLimitInfo1.getRemaining() == 1);
+                ids.add(id);
+
+                if (ids.size() % 1000 == 0) {
+                    logger.debug("XXX Got {} ids so far...", ids.size());
+                }
+            }
+        });
+
+        logger.debug("XXX Awaiting result...");
+        latch.await();
+        logger.debug("Done!");
+    }
+
+    @Test
+    public void testGetFriendsByUserId() throws Exception {
+        CountDownLatch latch = new CountDownLatch(1);
+        rxTwitterClient.getFriendsByUserId(1292574098).subscribe(new Observer<Long>() {
+            final List<Long> ids = new ArrayList<>();
+
+            public void onCompleted() {
+                logger.debug("XXX onCompleted: got {} ids", ids.size());
+                logger.debug("XXX onCompleted: ids={}", ids);
+                latch.countDown();
+            }
+
+            public void onError(Throwable e) {
+                logger.error("XXX onError: got {} ids", ids.size(), e);
+                latch.countDown();
+            }
+
+            public void onNext(Long id) {
+                if (ids.contains(id)) {
+                    logger.warn("XXX Got duplicate: {}", id);
+                    return;
+                }
+
+                ids.add(id);
+
+                if (ids.size() % 1000 == 0) {
+                    logger.debug("XXX Got {} ids so far...", ids.size());
+                }
+            }
+        });
+
+        logger.debug("XXX Awaiting result...");
+        latch.await();
+        logger.debug("Done!");
     }
 
     @Test
@@ -156,14 +226,31 @@ public class TwitterClientTest {
                 1953909074L
         );
 
-        List<User> users = twitterClient.lookupUsersById(ids);
+        CountDownLatch latch = new CountDownLatch(1);
+        List<User> users = new ArrayList<>();
+        rxTwitterClient.lookupUsersById(ids).subscribe(new Observer<User>() {
+            @Override
+            public void onCompleted() {
+                logger.debug("XXX onCompleted: got {} users", users.size());
+                latch.countDown();
+            }
 
-        Assert.assertNotNull(users);
-        Assert.assertEquals(100, users.size());
+            @Override
+            public void onError(Throwable e) {
+                logger.debug("XXX onError", e);
+                latch.countDown();
+            }
 
-        for (User user : users) {
-            logger.debug("User id={}, name={}, followers={}, friends={}", user.getId(), user.getScreenName(), user.getFollowersCount(), user.getFriendsCount());
-        }
+            @Override
+            public void onNext(User user) {
+                logger.debug("XXX onNext: user id={}, screenName={}", user.getId(), user.getScreenName());
+                users.add(user);
+            }
+        });
+
+        logger.debug("XXX Awaiting result...");
+        latch.await();
+        logger.debug("XXX Done!");
     }
 
     @Test
@@ -271,13 +358,30 @@ public class TwitterClientTest {
                 "nightseparator"
         );
 
-        List<User> users = twitterClient.lookupUsersByName(names);
+        CountDownLatch latch = new CountDownLatch(1);
+        List<User> users = new ArrayList<>();
+        rxTwitterClient.lookupUsersByName(names).subscribe(new Observer<User>() {
+            @Override
+            public void onCompleted() {
+                logger.debug("XXX onCompleted: got {} users", users.size());
+                latch.countDown();
+            }
 
-        Assert.assertNotNull(users);
-        Assert.assertEquals(100, users.size());
+            @Override
+            public void onError(Throwable e) {
+                logger.debug("XXX onError", e);
+                latch.countDown();
+            }
 
-        for (User user : users) {
-            logger.debug("User id={}, name={}, followers={}, friends={}", user.getId(), user.getScreenName(), user.getFollowersCount(), user.getFriendsCount());
-        }
+            @Override
+            public void onNext(User user) {
+                logger.debug("XXX onNext: user id={}, screenName={}", user.getId(), user.getScreenName());
+                users.add(user);
+            }
+        });
+
+        logger.debug("XXX Awaiting result...");
+        latch.await();
+        logger.debug("XXX Done!");
     }
 }

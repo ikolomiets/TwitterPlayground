@@ -1,3 +1,5 @@
+package electrit;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;

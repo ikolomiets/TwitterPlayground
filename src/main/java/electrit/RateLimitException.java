@@ -1,3 +1,5 @@
+package electrit;
+
 import java.io.IOException;
 
 public class RateLimitException extends IOException {
