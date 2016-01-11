@@ -30,12 +30,6 @@ public class AppConfig {
     @Autowired
     private Environment env;
 
-    @Bean
-    @Deprecated // todo app and user restTempaltes shouldn't share same scoreboard since have independent limits
-    public RateLimitsScoreborad rateLimitsScoreborad() {
-        return new RateLimitsScoreborad();
-    }
-
     @Bean(name = "restTemplateForApp")
     public RestTemplate restTemplate() {
         ClientCredentialsResourceDetails details = new ClientCredentialsResourceDetails();
@@ -50,12 +44,14 @@ public class AppConfig {
 
     @Bean(name = "restTemplateForUser")
     public RestTemplate restTemplateForUser() {
+        String owner = env.getProperty("twitter.owner");
+
         Map<String, OAuthConsumerToken> accessTokens = new HashMap<String, OAuthConsumerToken>() {{
             OAuthConsumerToken consumerToken = new OAuthConsumerToken();
             consumerToken.setValue(env.getProperty("twitter.accessToken"));
             consumerToken.setSecret(env.getProperty("twitter.accessTokenSecret"));
 
-            put("ikolomiets", consumerToken); // // todo use config's "owner" property
+            put(owner, consumerToken);
         }};
 
         OAuthSecurityContextImpl context = new OAuthSecurityContextImpl();
@@ -64,7 +60,7 @@ public class AppConfig {
         OAuthSecurityContextHolder.setContext(context);
 
         BaseProtectedResourceDetails protectedResourceDetails = new BaseProtectedResourceDetails();
-        protectedResourceDetails.setId("ikolomiets"); // todo use config's "owner" property
+        protectedResourceDetails.setId(owner);
         protectedResourceDetails.setConsumerKey(env.getProperty("twitter.clientID"));
         protectedResourceDetails.setSharedSecret(new SharedConsumerSecretImpl(env.getProperty("twitter.clientSecret")));
 
@@ -79,7 +75,7 @@ public class AppConfig {
         // Order of interceptors matters: add RateLimitInterceptor last,so
         // it will be called *before* ProtectedUserAccountInterceptor to update RateLimitsScoreborad
         restTemplate.getInterceptors().add(new ProtectedUserAccountInterceptor());
-        restTemplate.getInterceptors().add(new RateLimitInterceptor(rateLimitsScoreborad()));
+        restTemplate.getInterceptors().add(new RateLimitInterceptor(new RateLimitsScoreborad()));
 
         for (HttpMessageConverter<?> httpMessageConverter : restTemplate.getMessageConverters()) {
             if (httpMessageConverter instanceof MappingJackson2HttpMessageConverter) {

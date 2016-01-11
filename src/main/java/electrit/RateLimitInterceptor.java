@@ -26,6 +26,10 @@ public class RateLimitInterceptor implements ClientHttpRequestInterceptor {
         this.rateLimitsScoreborad = rateLimitsScoreborad;
     }
 
+    public RateLimitsScoreborad getRateLimitsScoreborad() {
+        return rateLimitsScoreborad;
+    }
+
     public ClientHttpResponse intercept(HttpRequest request, byte[] body, ClientHttpRequestExecution execution) throws IOException {
         String resourceFamily = parseResourceFamily(request);
         RateLimitInfo rateLimitInfo = null;

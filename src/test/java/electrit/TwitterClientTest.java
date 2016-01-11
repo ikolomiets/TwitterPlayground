@@ -6,8 +6,10 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.Arrays;
 import java.util.List;
@@ -24,9 +26,6 @@ public class TwitterClientTest {
     @Autowired
     private TwitterClient twitterClient;
 
-    @Autowired
-    private RateLimitsScoreborad rateLimitsScoreborad;
-
     @Test
     public void testShowUserById() throws Exception {
         User user = twitterClient.showUserById(USER_ID);
@@ -37,6 +36,17 @@ public class TwitterClientTest {
 
     @Test
     public void testUsersRateLimit() throws Exception {
+        RateLimitsScoreborad rateLimitsScoreborad = null;
+        RestTemplate restTemplate = twitterClient.getRestTemplate();
+        for (ClientHttpRequestInterceptor interceptor : restTemplate.getInterceptors()) {
+            if (interceptor instanceof RateLimitInterceptor) {
+                rateLimitsScoreborad = ((RateLimitInterceptor) interceptor).getRateLimitsScoreborad();
+                break;
+            }
+        }
+
+        Assert.assertNotNull(rateLimitsScoreborad);
+
         User user = twitterClient.showUserById(USER_ID);
         Assert.assertNotNull(user);
 

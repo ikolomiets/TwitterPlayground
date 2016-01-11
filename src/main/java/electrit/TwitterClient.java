@@ -39,8 +39,8 @@ public class TwitterClient {
         this.restTemplateForUser = restTemplateForUser;
     }
 
-    public static void main(String[] args) {
-        System.out.println();
+    public RestTemplate getRestTemplate() {
+        return restTemplate;
     }
 
     public void publicStreamSample() throws IOException {

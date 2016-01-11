@@ -3,3 +3,4 @@ twitter.clientSecret=<Consumer Secret (API Secret)>
 twitter.accessTokenUri=https://api.twitter.com/oauth2/token
 twitter.accessToken=<User Access Token>
 twitter.accessTokenSecret=<User Access Token Secret>
+twitter.owner=<id of owning user>
