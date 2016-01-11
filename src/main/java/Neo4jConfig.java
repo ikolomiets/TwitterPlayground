@@ -31,4 +31,9 @@ public class Neo4jConfig {
         return new DriverManagerDataSource(env.getProperty("neo4j.driverUrl"), env.getProperty("neo4j.username"), env.getProperty("neo4j.password"));
     }
 
+    @Bean
+    public Neo4jClient neo4jClient(JdbcTemplate jdbcTemplate) {
+        return new Neo4jClient(jdbcTemplate);
+    }
+
 }

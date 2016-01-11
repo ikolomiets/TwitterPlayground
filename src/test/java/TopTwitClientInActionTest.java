@@ -36,6 +36,9 @@ public class TopTwitClientInActionTest {
             allTopUsers.addAll(names);
         }
 
+
+        int req = 0;
+
         for (int page = 0; page < 50; page++) {
             List<String> pageUsers = new LinkedList<>(allTopUsers.subList(page * 100, (page + 1) * 100));
             Assert.assertEquals(100, pageUsers.size());
@@ -53,12 +56,17 @@ public class TopTwitClientInActionTest {
                     continue;
                 }
 
+                req += (user.getFollowersCount() / 5000) + 1;
+
                 logger.info("{},{},{},{},{}", user.getId(), user.getScreenName(), user.getFollowersCount(), user.getFriendsCount(), user.isProtectedAccount());
             }
 
             for (String pageUser : pageUsers) {
-                logger.warn("User ranked {} is not found: {}", (page * 100 + pageUsers.indexOf(pageUser)), pageUser);
+                logger.warn("User ranked {} is not found: {}", allTopUsers.indexOf(pageUser), pageUser);
             }
         }
+
+        logger.debug("XXX req={}", req);
+
     }
 }

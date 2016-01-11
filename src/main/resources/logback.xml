@@ -61,6 +61,8 @@
         <appender-ref ref="TOPTWIT_ERROR_FILE"/>
     </logger>
 
+    <logger name="org.neo4j.jdbc.Neo4jConnection" level="off"/>
+
     <logger name="org.springframework" level="info"/>
     <logger name="org.springframework.security" level="debug"/>
     <logger name="org.springframework.web" level="debug"/>

@@ -267,7 +267,7 @@ public class TwitterClientTest {
                 "Zhirinovskiy",
                 "JuMistress",
                 "VladimirMarkin",
-                "sranysovok",
+                "NikitaIsaev78",
                 "nightseparator"
         );
 
